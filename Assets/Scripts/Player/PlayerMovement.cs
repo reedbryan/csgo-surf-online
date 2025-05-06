@@ -12,6 +12,7 @@ public class PlayerMovement : MonoBehaviour
 
     // Movement settings
     public float moveSpeed;
+    public float jumpHeight;
     public float airControl;
     public float slopeControl;
     public float groundDrag;
@@ -19,7 +20,9 @@ public class PlayerMovement : MonoBehaviour
     public float slopeDrag;
 
     private Vector3 moveDirection;
-    private bool isGrounded; // Tracks if the player is on the ground (not including slopes)
+    [SerializeField] private bool isGrounded; // Tracks if the player is on the ground (not including slopes)
+    [SerializeField] private bool isJumping; // Tracks if the player is jumping
+    private float jumpCooldown = 0.1f;
     RaycastHit slopeHit; // Raycast hit information for slope detection
     public float maxSlope;
 
@@ -43,17 +46,23 @@ public class PlayerMovement : MonoBehaviour
     }
 
     void GetInputs(){
-        Vector3 playerInput = new Vector3(Input.GetAxisRaw("Horizontal"), Input.GetKey(KeyCode.Space) ? 1:0, Input.GetAxisRaw("Vertical"));
-
+        
+        // Collect keyboard input
+        Vector3 playerInput = new Vector3(Input.GetAxisRaw("Horizontal"), 0, Input.GetAxisRaw("Vertical"));
         if (playerInput.magnitude > 1)
             playerInput.Normalize();
 
+        // Assign the input to the move direction
         moveDirection = orientation.forward * playerInput.z + orientation.right * playerInput.x;
+
+        // Assign the input to the jumping satus
+        isJumping = Input.GetKey(KeyCode.Space) ? true:false;
     }
 
     void FixedUpdate()
     {
         MovePlayer();
+        JumpPlayer();
         Player_Debug();
     }
 
@@ -62,17 +71,18 @@ public class PlayerMovement : MonoBehaviour
 
         if (IsOnSlope())
         {
-            Debug.Log("On slope");
+            //Debug.Log("On slope");
+
+            // Set grounded status to true when on slope
+            isGrounded = true;
             
+            // Get the move direction reletive to the angle of the slope
             Vector3 slopeDir = GetSlopeMoveDirection();
 
-            // Instantly redirect velocity while on slope
-            //rb.velocity = slopeDir * rb.velocity.magnitude; // Project velocity onto the slope plane
             // Gradually redirect velocity while on slope
             rb.velocity = Vector3.Lerp(rb.velocity, rb.velocity.magnitude * slopeDir, Time.fixedDeltaTime * slopeControl);
 
-
-            // Apply slope control
+            // Apply movement with slope control scaler (<1) 
             rb.drag = slopeDrag; // Set drag for slope
             rb.AddForce(slopeDir* moveSpeed * slopeControl, ForceMode.Force);
         }
@@ -80,7 +90,7 @@ public class PlayerMovement : MonoBehaviour
         {
             //Debug.Log("On ground");
             
-            // Apply ground control
+            // Apply movement
             rb.drag = groundDrag; // Set drag for ground
             rb.AddForce(moveDirection * moveSpeed, ForceMode.Force);
         }
@@ -88,7 +98,10 @@ public class PlayerMovement : MonoBehaviour
         {
             //Debug.Log("In air");
             
-            // Apply air control
+            // Gradually redirect velocity while on slope
+            rb.velocity = Vector3.Lerp(rb.velocity, rb.velocity.magnitude * orientation.forward, Time.fixedDeltaTime * airControl);
+            
+            // Apply movement with air control scaler (<0.5)
             rb.drag = airDrag; // Set drag for air
             rb.AddForce(moveDirection * moveSpeed * airControl, ForceMode.Force);
 
@@ -97,6 +110,22 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
+    void JumpPlayer()
+    {   
+        jumpCooldown -= Time.deltaTime; // Decrease jump cooldown
+        
+        if (isJumping && isGrounded && jumpCooldown <= 0)
+        {
+            Debug.Log("Jump!");
+            
+            // Apply jump force
+            rb.AddForce(Vector3.up * 5f, ForceMode.Impulse);
+            //rb.velocity += new Vector3(0,jumpHeight,0);
+
+            // Reset cooldown
+            jumpCooldown = 0.1f;
+        }
+    }
     private bool IsOnSlope()
     {
         // Raycast slightly down to detect if standing on a slanted surface
