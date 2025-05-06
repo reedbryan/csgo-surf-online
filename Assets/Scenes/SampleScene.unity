@@ -1158,11 +1158,14 @@ MonoBehaviour:
   rb: {fileID: 1570826286}
   orientation: {fileID: 646568}
   moveSpeed: 20
-  airControl: 0.5
+  jumpHeight: 5
+  airControl: 0.2
   slopeControl: 0.6
   groundDrag: 3
   airDrag: 0.3
   slopeDrag: 0.3
+  isGrounded: 0
+  isJumping: 0
   maxSlope: 80
 --- !u!1 &2006673784
 GameObject:
